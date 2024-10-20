@@ -1,0 +1,77 @@
+version: '3'
+services:
+  frontend:
+    container_name: frontend
+    build: frontend
+    image: zoltannz/kafka-spark-project-frontend:latest
+    depends_on:
+      - kafka
+    ports:
+      - "80:80"
+  backend:
+    container_name: backend
+    build: backend
+    image: zoltannz/kafka-spark-project-backend:latest
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_CONNECT: kafka:9092
+      ZOOKEEPER_CONNECT: zookeeper:2181
+    ports:
+      - "3000:3000"
+  zookeeper:
+    container_name: zookeeper
+    image: wurstmeister/zookeeper:latest
+    ports:
+      - "2181:2181"
+  kafka:
+    container_name: kafka
+    image: wurstmeister/kafka:latest
+    depends_on:
+      - zookeeper
+    environment:
+      HOSTNAME_COMMAND: "route -n | awk '/UG[ \t]/{print $$2}'"
+      KAFKA_CREATE_TOPICS: "boerse.dev:1:1"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_ZOOKEEPER_CONNECTION_TIMEOUT_MS: "60000"
+      KAFKA_ZOOKEEPER_SESSION_TIMEOUT_MS: "60000"
+      KAFKA_ZOOKEEPER_SYNC_TIME_MS: "60000"
+    ports:
+      - "9092:9092"
+    hostname: "kafka"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./kafka/volumes/kafka:/kafka
+  kafka-console:
+    container_name: kafka-console
+    image: wurstmeister/kafka:latest
+    depends_on:
+      - kafka
+    environment:
+      HOSTNAME_COMMAND: "route -n | awk '/UG[ \t]/{print $$2}'"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_ZOOKEEPER_CONNECTION_TIMEOUT_MS: "60000"
+      KAFKA_ZOOKEEPER_SESSION_TIMEOUT_MS: "60000"
+      KAFKA_ZOOKEEPER_SYNC_TIME_MS: "60000"
+    command: "/opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka:9092 --topic boerse.dev"
+  spark-streamer:
+    container_name: spark-streamer
+    build: SparkStreamer
+    image: zoltannz/kafka-spark-project-spark-streamer:latest
+    depends_on:
+      - kafka
+    command: mvn exec:java
+    hostname: spark-streamer
+    environment:
+      KAFKA_SERVER: kafka
+    expose:
+      - 4040
+      - 7077
+      - 6066
+    ports:
+      - 4040:4040
+      - 6066:6066
+      - 7077:7077
+      - 8080:8080

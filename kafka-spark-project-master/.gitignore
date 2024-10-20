@@ -1,0 +1,10 @@
+.idea
+target
+*.iml
+node_modules
+derby.log
+metastore_db
+spark-warehouse
+.project
+.settings
+.classpath
